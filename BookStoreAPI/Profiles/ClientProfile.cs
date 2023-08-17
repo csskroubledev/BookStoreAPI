@@ -1,0 +1,20 @@
+﻿using AutoMapper;
+using BookStoreAPI.Models;
+
+namespace BookStoreAPI.Profiles;
+
+public class ClientProfile : Profile
+{
+    public ClientProfile()
+    {
+        CreateMap<ClientDto, Client>()
+            .ForMember(dest => dest.RentedBooks, opt => opt.Ignore())
+            .ForMember(dest => dest.Id, opt => opt.Ignore());
+        CreateMap<Client, ClientDto>();
+
+        CreateMap<ClientPatchDto, Client>()
+            .ForMember(dest => dest.RentedBooks, opt => opt.Ignore())
+            .ForMember(dest => dest.Id, opt => opt.Ignore());
+        CreateMap<Client, ClientPatchDto>();
+    }
+}
