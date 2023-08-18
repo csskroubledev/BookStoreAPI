@@ -16,7 +16,7 @@ public class PatchBookCommand : IRequest<Unit>
 
     [DataType(DataType.DateTime)] public DateTime? ReleaseDate { get; set; }
 
-    [DataType(DataType.DateTime)] public decimal? Price { get; set; }
+    public decimal? Price { get; set; }
 
     public int? GenreId { get; set; }
 }
