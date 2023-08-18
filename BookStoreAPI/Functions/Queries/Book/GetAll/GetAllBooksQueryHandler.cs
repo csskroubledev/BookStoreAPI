@@ -7,8 +7,8 @@ namespace BookStoreAPI.Queries.Handlers;
 
 public class GetAllBooksQueryHandler : IRequestHandler<GetAllBooksQuery, IEnumerable<BookDto>>
 {
-    private IUnitOfWork _unitOfWork;
-    private IMapper _mapper;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public GetAllBooksQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
     {
@@ -19,7 +19,7 @@ public class GetAllBooksQueryHandler : IRequestHandler<GetAllBooksQuery, IEnumer
     public async Task<IEnumerable<BookDto>> Handle(GetAllBooksQuery request, CancellationToken cancellationToken)
     {
         var books = await _unitOfWork.Books.GetAllAsync();
-        
+
         var booksDto = _mapper.Map<IEnumerable<BookDto>>(books);
         return booksDto;
     }

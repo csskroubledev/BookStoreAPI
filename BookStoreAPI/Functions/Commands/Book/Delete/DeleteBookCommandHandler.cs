@@ -6,7 +6,7 @@ namespace BookStoreAPI.Functions.Commands.Book.Delete;
 
 public class DeleteBookCommandHandler : IRequestHandler<DeleteBookCommand, Unit>
 {
-    private IUnitOfWork _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
 
     public DeleteBookCommandHandler(IUnitOfWork unitOfWork)
     {
@@ -21,7 +21,7 @@ public class DeleteBookCommandHandler : IRequestHandler<DeleteBookCommand, Unit>
         _unitOfWork.Books.Delete(bookToDelete);
 
         await _unitOfWork.SaveAsync();
-        
+
         return Unit.Value;
     }
 }

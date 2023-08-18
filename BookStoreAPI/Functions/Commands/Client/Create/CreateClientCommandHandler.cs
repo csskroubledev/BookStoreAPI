@@ -1,12 +1,11 @@
-﻿using AutoMapper;
-using BookStoreAPI.Interfaces;
+﻿using BookStoreAPI.Interfaces;
 using MediatR;
 
 namespace BookStoreAPI.Functions.Commands.Client.Create;
 
 public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, Unit>
 {
-    private IUnitOfWork _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateClientCommandHandler(IUnitOfWork unitOfWork)
     {
@@ -25,7 +24,7 @@ public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, U
         await _unitOfWork.Clients.AddAsync(clientToAdd);
 
         await _unitOfWork.SaveAsync();
-        
+
         return Unit.Value;
     }
 }

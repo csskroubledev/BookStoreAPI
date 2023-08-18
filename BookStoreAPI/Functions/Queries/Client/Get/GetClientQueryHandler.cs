@@ -8,8 +8,8 @@ namespace BookStoreAPI.Queries.Handlers;
 
 public class GetClientQueryHandler : IRequestHandler<GetClientQuery, ClientDto>
 {
-    private IUnitOfWork _unitOfWork;
-    private IMapper _mapper;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public GetClientQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
     {

@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using BookStoreAPI.Exceptions;
 using BookStoreAPI.Interfaces;
 using BookStoreAPI.Models;
 using Microsoft.EntityFrameworkCore;
@@ -9,11 +8,12 @@ namespace BookStoreAPI.Repositories;
 public abstract class GenericRepository<T> : IGenericRepository<T> where T : class
 {
     protected readonly BookStoreDatabaseContext _dbContext;
-    
+
     protected GenericRepository(BookStoreDatabaseContext dbContext)
     {
         _dbContext = dbContext;
     }
+
     public async Task<IEnumerable<T>> GetAllAsync()
     {
         return await _dbContext.Set<T>().AsNoTracking().ToListAsync();

@@ -8,8 +8,8 @@ namespace BookStoreAPI.Queries.Handlers;
 
 public class GetBookQueryHandler : IRequestHandler<GetBookQuery, BookDto>
 {
-    private IUnitOfWork _unitOfWork;
-    private IMapper _mapper;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public GetBookQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
     {
@@ -21,9 +21,9 @@ public class GetBookQueryHandler : IRequestHandler<GetBookQuery, BookDto>
     {
         var book = await _unitOfWork.Books.GetByIdAsync(request.BookId);
         ApiExceptionHandler.ThrowIf(book is null, 404, $"Book with ID {request.BookId} doesn't exist.");
-        
+
         var bookDto = _mapper.Map<BookDto>(book);
-        
+
         return bookDto;
     }
 }

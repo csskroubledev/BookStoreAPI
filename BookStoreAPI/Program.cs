@@ -23,10 +23,7 @@ var DBPath = Path.Join(path, "bookStore.db");
 builder.Services.AddDbContext<BookStoreDatabaseContext>(options =>
     options.UseSqlite($"Data Source={DBPath}"));
 
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
-});
+builder.Services.AddMediatR(cfg => { cfg.RegisterServicesFromAssembly(typeof(Program).Assembly); });
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 

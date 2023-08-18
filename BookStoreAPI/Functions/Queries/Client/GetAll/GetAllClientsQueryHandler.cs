@@ -7,8 +7,8 @@ namespace BookStoreAPI.Queries.Handlers;
 
 public class GetAllClientsQueryHandler : IRequestHandler<GetAllClientsQuery, IEnumerable<ClientDto>>
 {
-    private IUnitOfWork _unitOfWork;
-    private IMapper _mapper;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public GetAllClientsQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
     {

@@ -7,8 +7,8 @@ namespace BookStoreAPI.Commands.Handlers;
 
 public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, Unit>
 {
-    private IUnitOfWork _unitOfWork;
-    private IMapper _mapper;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UpdateClientCommandHandler(IUnitOfWork unitOfWork, IMapper mapper)
     {
@@ -20,13 +20,13 @@ public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, U
     {
         var clientToEdit = await _unitOfWork.Clients.GetByIdAsync(request.ClientId);
         ApiExceptionHandler.ThrowIf(clientToEdit is null, 404, "Client with specified ID doesn't exist.");
-        
+
         _unitOfWork.Clients.Update(clientToEdit);
 
         _mapper.Map(request, clientToEdit);
 
         await _unitOfWork.SaveAsync();
-        
+
         return Unit.Value;
     }
 }

@@ -1,15 +1,10 @@
-using AutoMapper;
 using BookStoreAPI.Commands;
-using Microsoft.AspNetCore.JsonPatch;
-using BookStoreAPI.Exceptions;
 using BookStoreAPI.Functions.Commands.Book.Create;
 using BookStoreAPI.Functions.Commands.Book.Delete;
 using BookStoreAPI.Functions.Commands.Book.Patch;
-using BookStoreAPI.Interfaces;
 using BookStoreAPI.Models;
 using BookStoreAPI.Queries;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookStoreAPI.Controllers;
@@ -41,9 +36,9 @@ public class BookStoreController : ControllerBase
         {
             BookId = id
         };
-        
+
         var result = await _mediator.Send(request);
-        
+
         return Ok(result);
     }
 
@@ -75,7 +70,7 @@ public class BookStoreController : ControllerBase
 
         return NoContent();
     }
-    
+
     [HttpPatch("{id}")]
     public async Task<ActionResult> Patch(int id, [FromBody] PatchBookCommand patchBookCommand)
     {

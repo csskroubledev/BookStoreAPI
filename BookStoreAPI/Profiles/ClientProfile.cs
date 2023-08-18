@@ -13,11 +13,6 @@ public class ClientProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.Ignore());
         CreateMap<Client, ClientDto>();
 
-        CreateMap<ClientPatchDto, Client>()
-            .ForMember(dest => dest.RentedBooks, opt => opt.Ignore())
-            .ForMember(dest => dest.Id, opt => opt.Ignore());
-        CreateMap<Client, ClientPatchDto>();
-
         CreateMap<UpdateClientCommand, Client>()
             .ForMember(dest => dest.Id, opt => opt.Ignore());
     }

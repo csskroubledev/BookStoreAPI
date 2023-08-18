@@ -6,7 +6,7 @@ namespace BookStoreAPI.Functions.Commands.Client.Patch;
 
 public class PatchClientCommandHandler : IRequestHandler<PatchClientCommand, Unit>
 {
-    private IUnitOfWork _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
 
     public PatchClientCommandHandler(IUnitOfWork unitOfWork)
     {
@@ -17,15 +17,15 @@ public class PatchClientCommandHandler : IRequestHandler<PatchClientCommand, Uni
     {
         var clientToEdit = await _unitOfWork.Clients.GetByIdAsync(request.ClientId);
         ApiExceptionHandler.ThrowIf(clientToEdit is null, 404, "Client with specified ID doesn't exist.");
-        
+
         _unitOfWork.Clients.Update(clientToEdit);
-        
+
         clientToEdit.FirstName = request.FirstName ?? clientToEdit.FirstName;
         clientToEdit.LastName = request.LastName ?? clientToEdit.LastName;
         clientToEdit.DateOfBirth = request.DateOfBirth ?? clientToEdit.DateOfBirth;
 
         await _unitOfWork.SaveAsync();
-        
+
         return Unit.Value;
     }
 }

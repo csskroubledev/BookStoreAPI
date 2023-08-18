@@ -1,5 +1,4 @@
-﻿using BookStoreAPI.Exceptions;
-using BookStoreAPI.Interfaces;
+﻿using BookStoreAPI.Interfaces;
 using BookStoreAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +12,7 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
     {
         _dbContext = dbContext;
     }
-    
+
     public async Task<IEnumerable<Book>> GetAllAsync()
     {
         return await _dbContext.Books.Include(b => b.RentalHistory).Include(b => b.Genre).AsNoTracking().ToListAsync();
@@ -21,6 +20,7 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
 
     public async Task<Book?> GetByIdAsync(int id)
     {
-        return await _dbContext.Books.Include(b => b.RentalHistory).Include(b => b.Genre).AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+        return await _dbContext.Books.Include(b => b.RentalHistory).Include(b => b.Genre).AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == id);
     }
 }

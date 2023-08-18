@@ -6,7 +6,7 @@ namespace BookStoreAPI.Functions.Commands.Client.Delete;
 
 public class DeleteClientCommandHandler : IRequestHandler<DeleteClientCommand, Unit>
 {
-    private IUnitOfWork _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
 
     public DeleteClientCommandHandler(IUnitOfWork unitOfWork)
     {
@@ -17,11 +17,11 @@ public class DeleteClientCommandHandler : IRequestHandler<DeleteClientCommand, U
     {
         var clientToDelete = await _unitOfWork.Clients.GetByIdAsync(request.ClientId);
         ApiExceptionHandler.ThrowIf(clientToDelete is null, 404, $"Client with ID {request.ClientId} doesn't exist.");
-        
+
         _unitOfWork.Clients.Delete(clientToDelete);
 
         await _unitOfWork.SaveAsync();
-        
+
         return Unit.Value;
     }
 }

@@ -1,12 +1,11 @@
-﻿using AutoMapper;
-using BookStoreAPI.Interfaces;
+﻿using BookStoreAPI.Interfaces;
 using MediatR;
 
 namespace BookStoreAPI.Functions.Commands.Book.Create;
 
 public class CreateBookCommandHandler : IRequestHandler<CreateBookCommand, Unit>
 {
-    private IUnitOfWork _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateBookCommandHandler(IUnitOfWork unitOfWork)
     {
