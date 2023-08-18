@@ -1,0 +1,74 @@
+﻿using BookStoreAPI.Exceptions;
+using BookStoreAPI.Interfaces;
+using BookStoreAPI.Models;
+using MediatR;
+
+namespace BookStoreAPI.Functions.Commands.Book.Patch;
+
+public class PatchBookCommandHandler : IRequestHandler<PatchBookCommand, Unit>
+{
+    private IUnitOfWork _unitOfWork;
+
+    public PatchBookCommandHandler(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<Unit> Handle(PatchBookCommand request, CancellationToken cancellationToken)
+    {
+        var bookToEdit = await _unitOfWork.Books.GetByIdAsync(request.BookId);
+        ApiExceptionHandler.ThrowIf(bookToEdit is null, 404, "Book with specified ID doesn't exist.");
+        
+        _unitOfWork.Books.Update(bookToEdit);
+        
+        if (request.ClientId is not null && bookToEdit.ClientId != request.ClientId)
+        {
+            var client = await _unitOfWork.Clients.GetByIdAsync(request.ClientId.Value);
+            ApiExceptionHandler.ThrowIf(client is null, 404, "Client with specified ID doesn't exist.");
+
+            if (bookToEdit.ClientId is not null)
+            {
+                var currentRental =
+                    bookToEdit.RentalHistory.SingleOrDefault(r =>
+                        r.ClientId == bookToEdit.ClientId && r.ReturnDate == null);
+                if (currentRental is not null)
+                {
+                    currentRental.ReturnDate = DateTime.Now;
+                }
+            }
+            
+            var rentalHistoryEntry = new RentalHistory
+            {
+                BookId = bookToEdit.Id,
+                ClientId = request.ClientId.Value,
+                RentDate = DateTime.Now
+            };
+            
+            bookToEdit.ClientId = request.ClientId;
+            bookToEdit.RentalHistory.Add(rentalHistoryEntry);
+        }
+
+        if (request.ClientId is null && bookToEdit.ClientId is not null)
+        {
+            var currentRental =
+                bookToEdit.RentalHistory.SingleOrDefault(r =>
+                    r.ClientId == bookToEdit.ClientId && r.ReturnDate == null);
+            if (currentRental is not null)
+            {
+                currentRental.ReturnDate = DateTime.Now;
+            }
+
+            bookToEdit.ClientId = null;
+        }
+
+        bookToEdit.Title = request.Title ?? bookToEdit.Title;
+        bookToEdit.Author = request.Author ?? bookToEdit.Author;
+        bookToEdit.ReleaseDate = request.ReleaseDate ?? bookToEdit.ReleaseDate;
+        bookToEdit.Price = request.Price ?? bookToEdit.Price;
+        bookToEdit.GenreId = request.GenreId ?? bookToEdit.GenreId;
+
+        await _unitOfWork.SaveAsync();
+        
+        return Unit.Value;
+    }
+}

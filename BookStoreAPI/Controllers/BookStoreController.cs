@@ -1,8 +1,15 @@
 using AutoMapper;
+using BookStoreAPI.Commands;
 using Microsoft.AspNetCore.JsonPatch;
 using BookStoreAPI.Exceptions;
+using BookStoreAPI.Functions.Commands.Book.Create;
+using BookStoreAPI.Functions.Commands.Book.Delete;
+using BookStoreAPI.Functions.Commands.Book.Patch;
 using BookStoreAPI.Interfaces;
 using BookStoreAPI.Models;
+using BookStoreAPI.Queries;
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookStoreAPI.Controllers;
@@ -11,53 +18,70 @@ namespace BookStoreAPI.Controllers;
 [ApiController]
 public class BookStoreController : ControllerBase
 {
-    private readonly IMapper _mapper;
-    private readonly IBookService _bookService;
+    private readonly IMediator _mediator;
 
-    public BookStoreController(IMapper mapper, IBookService bookService)
+    public BookStoreController(IMediator mediator)
     {
-        _mapper = mapper;
-        _bookService = bookService;
+        _mediator = mediator;
     }
 
     [HttpGet]
-    public async Task<IEnumerable<BookDto>> Get()
+    public async Task<ActionResult<IEnumerable<BookDto>>> Get()
     {
-        return _mapper.Map<IEnumerable<BookDto>>(await _bookService.GetAllBooksAsync());
+        var request = new GetAllBooksQuery();
+        var result = await _mediator.Send(request);
+
+        return Ok(result);
     }
 
     [HttpGet("{id}", Name = "GetBookById")]
-    public async Task<BookDto> Get(int id)
+    public async Task<ActionResult<BookDto>> Get(int id)
     {
-        var book = await _bookService.GetBookByIdAsync(id);
-        ApiExceptionHandler.ThrowIf(book is null, 404, "Book with specified ID doesn't exist.");
-
-        return _mapper.Map<BookDto>(book);
+        var request = new GetBookQuery
+        {
+            BookId = id
+        };
+        
+        var result = await _mediator.Send(request);
+        
+        return Ok(result);
     }
 
     [HttpPost]
-    public async Task Post([FromBody] BookDto data)
+    public async Task<ActionResult> Post([FromBody] CreateBookCommand createBookCommand)
     {
-        var book = _mapper.Map<Book>(data);
-        await _bookService.AddBookAsync(book);
+        await _mediator.Send(createBookCommand);
+
+        return NoContent();
     }
 
     [HttpPut("{id}")]
-    public async Task Put(int id, [FromBody] BookDto data)
+    public async Task<ActionResult> Put(int id, [FromBody] UpdateBookCommand updateBookCommand)
     {
-        var book = _mapper.Map<Book>(data);
-        await _bookService.UpdateBookAsync(id, book);
+        updateBookCommand.BookId = id;
+        await _mediator.Send(updateBookCommand);
+
+        return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public async Task Delete(int id)
+    public async Task<ActionResult> Delete(int id)
     {
-        await _bookService.DeleteBookAsync(id);
+        var command = new DeleteBookCommand
+        {
+            BookId = id
+        };
+        await _mediator.Send(command);
+
+        return NoContent();
     }
     
     [HttpPatch("{id}")]
-    public async Task Patch(int id, [FromBody] BookPatchDto data)
+    public async Task<ActionResult> Patch(int id, [FromBody] PatchBookCommand patchBookCommand)
     {
-        await _bookService.PatchBookAsync(id, data);
+        patchBookCommand.BookId = id;
+        await _mediator.Send(patchBookCommand);
+
+        return NoContent();
     }
 }

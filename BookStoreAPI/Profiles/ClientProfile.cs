@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using BookStoreAPI.Commands;
 using BookStoreAPI.Models;
 
 namespace BookStoreAPI.Profiles;
@@ -16,5 +17,8 @@ public class ClientProfile : Profile
             .ForMember(dest => dest.RentedBooks, opt => opt.Ignore())
             .ForMember(dest => dest.Id, opt => opt.Ignore());
         CreateMap<Client, ClientPatchDto>();
+
+        CreateMap<UpdateClientCommand, Client>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore());
     }
 }

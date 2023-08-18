@@ -4,7 +4,6 @@ using BookStoreAPI.Interfaces;
 using BookStoreAPI.Models;
 using BookStoreAPI.Models.Repositories;
 using BookStoreAPI.Repositories;
-using BookStoreAPI.Services;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,13 +23,15 @@ var DBPath = Path.Join(path, "bookStore.db");
 builder.Services.AddDbContext<BookStoreDatabaseContext>(options =>
     options.UseSqlite($"Data Source={DBPath}"));
 
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+});
+
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
-
-builder.Services.AddScoped<IBookService, BookService>();
-builder.Services.AddScoped<IClientService, ClientService>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 

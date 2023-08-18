@@ -16,11 +16,11 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
     
     public async Task<IEnumerable<Book>> GetAllAsync()
     {
-        return await _dbContext.Books.Include(b => b.Genre).AsNoTracking().ToListAsync();
+        return await _dbContext.Books.Include(b => b.RentalHistory).Include(b => b.Genre).AsNoTracking().ToListAsync();
     }
 
     public async Task<Book?> GetByIdAsync(int id)
     {
-        return await _dbContext.Books.Include(b => b.Genre).AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+        return await _dbContext.Books.Include(b => b.RentalHistory).Include(b => b.Genre).AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
     }
 }

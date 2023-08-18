@@ -16,11 +16,11 @@ public class ClientRepository : GenericRepository<Client>, IClientRepository
 
     public async Task<IEnumerable<Client>> GetAllAsync()
     {
-        return await _dbContext.Clients.AsNoTracking().Include(c => c.RentedBooks).ToListAsync();
+        return await _dbContext.Clients.AsNoTracking().Include(c => c.RentedBooks).ThenInclude(b => b.RentalHistory).ToListAsync();
     }
 
     public async Task<Client?> GetByIdAsync(int id)
     {
-        return await _dbContext.Clients.AsNoTracking().Include(c => c.RentedBooks).FirstOrDefaultAsync(b => b.Id == id);
+        return await _dbContext.Clients.AsNoTracking().Include(c => c.RentedBooks).ThenInclude(b => b.RentalHistory).FirstOrDefaultAsync(b => b.Id == id);
     }
 }

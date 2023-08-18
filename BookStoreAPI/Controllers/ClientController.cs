@@ -3,10 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using BookStoreAPI.Commands;
 using Microsoft.AspNetCore.JsonPatch;
 using BookStoreAPI.Exceptions;
+using BookStoreAPI.Functions.Commands.Client.Create;
+using BookStoreAPI.Functions.Commands.Client.Delete;
+using BookStoreAPI.Functions.Commands.Client.Patch;
 using BookStoreAPI.Interfaces;
 using BookStoreAPI.Models;
+using BookStoreAPI.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,56 +22,72 @@ namespace BookStoreAPI.Controllers
     [ApiController]
     public class ClientController : ControllerBase
     {
-        private readonly IMapper _mapper;
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IClientService _clientService;
+        private readonly IMediator _mediator;
 
-        public ClientController(IMapper mapper, IClientService clientService, IUnitOfWork unitOfWork)
+        public ClientController(IMediator mediator)
         {
-            _mapper = mapper;
-            _clientService = clientService;
-            _unitOfWork = unitOfWork;
+            _mediator = mediator;
         }
 
         [HttpGet]
         public async Task<IEnumerable<ClientDto>> Get()
         {
-            return _mapper.Map<IEnumerable<ClientDto>>(await _clientService.GetAllClientsAsync());
+            var request = new GetAllClientsQuery();
+
+            var result = await _mediator.Send(request);
+
+            return result;
         }
 
         [HttpGet("{id}", Name = "GetClientById")]
         public async Task<ClientDto> Get(int id)
         {
-            var client = await _clientService.GetClientByIdAsync(id);
-            ApiExceptionHandler.ThrowIf(client is null, 404, "Client with specified ID doesn't exist.");
+            var request = new GetClientQuery
+            {
+                ClientId = id
+            };
 
-            return _mapper.Map<ClientDto>(client);
+            var result = await _mediator.Send(request);
+
+            return result;
         }
 
         [HttpPost]
-        public async Task Post([FromBody] ClientDto data)
+        public async Task<ActionResult> Post([FromBody] CreateClientCommand createClientCommand)
         {
-            var client = _mapper.Map<Client>(data);
-            await _clientService.AddClientAsync(client);
+            await _mediator.Send(createClientCommand);
+
+            return NoContent();
         }
 
         [HttpPut("{id}")]
-        public async Task Put(int id, [FromBody] ClientDto data)
+        public async Task<ActionResult> Put(int id, [FromBody] UpdateClientCommand updateClientCommand)
         {
-            var client = _mapper.Map<Client>(data);
-            await _clientService.UpdateClientAsync(id, client);
+            updateClientCommand.ClientId = id;
+            await _mediator.Send(updateClientCommand);
+
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public async Task Delete(int id)
+        public async Task<ActionResult> Delete(int id)
         {
-            await _clientService.DeleteClientAsync(id);
+            var command = new DeleteClientCommand
+            {
+                ClientId = id
+            };
+            await _mediator.Send(command);
+
+            return NoContent();
         }
 
         [HttpPatch("{id}")]
-        public async Task Patch(int id, [FromBody] ClientPatchDto data)
+        public async Task<ActionResult> Patch(int id, [FromBody] PatchClientCommand patchClientCommand)
         {
-            await _clientService.PatchClientAsync(id, data);
+            patchClientCommand.ClientId = id;
+            await _mediator.Send(patchClientCommand);
+
+            return NoContent();
         }
     }
 }
