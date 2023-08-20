@@ -6,6 +6,7 @@ using BookStoreAPI.Functions.Commands.Client.Create;
 using BookStoreAPI.Functions.Commands.Client.Patch;
 using BookStoreAPI.Models;
 using BookStoreAPI.Tests.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Xunit;
@@ -31,16 +32,24 @@ public class ClientsTest : IClassFixture<BookStoreWebApplicationFactory<Program>
     [Fact]
     public async Task Get_ReturnsListOfAllClientsFromDatabase()
     {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BookStoreDatabaseContext>();
+
         var client = _factory.CreateClient();
 
         var response = await client.GetAsync("api/Client");
         response.EnsureSuccessStatusCode();
 
         var contentString = await response.Content.ReadAsStringAsync();
-        var clients = JsonConvert.DeserializeObject<IEnumerable<ClientDto>>(contentString);
+        var clients = JsonConvert.DeserializeObject<List<ClientDto>>(contentString);
+
+        var currentClients = await dbContext.Clients.Include(c => c.RentedBooks).ThenInclude(b => b.RentalHistory)
+            .ToListAsync();
+        var currentClientsDto = _mapper.Map<List<ClientDto>>(currentClients);
 
         Assert.NotNull(clients);
         Assert.NotEmpty(clients);
+        Assert.Equivalent(currentClientsDto, clients);
     }
 
     [Fact]
@@ -51,7 +60,7 @@ public class ClientsTest : IClassFixture<BookStoreWebApplicationFactory<Program>
 
         var client = _factory.CreateClient();
 
-        var firstClient = dbContext.Clients.First();
+        var firstClient = await dbContext.Clients.FirstAsync();
 
         var response = await client.GetAsync($"api/Client/{firstClient.Id}");
         response.EnsureSuccessStatusCode();
@@ -62,9 +71,15 @@ public class ClientsTest : IClassFixture<BookStoreWebApplicationFactory<Program>
 
         Assert.NotNull(DbClient);
         Assert.Equivalent(firstClientDto, DbClient);
+    }
 
-        var responseInvalid = await client.GetAsync("api/Client/11111");
-        Assert.Equal(HttpStatusCode.NotFound, responseInvalid.StatusCode);
+    [Fact]
+    public async Task Get_ReturnsNotFoundIfInvalidClient()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("api/Client/11111");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -80,22 +95,29 @@ public class ClientsTest : IClassFixture<BookStoreWebApplicationFactory<Program>
         };
         var clientCommandSerialized = JsonConvert.SerializeObject(clientCommand);
 
-        var clientInvalidCommand = new CreateClientCommand
+
+        var response = await client.PostAsync("api/Client",
+            new StringContent(clientCommandSerialized, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_ReturnsBadRequestIfInvalidBody()
+    {
+        var client = _factory.CreateClient();
+
+        var clientCommand = new CreateClientCommand
         {
             FirstName =
                 "Johnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             LastName = "Doe",
             DateOfBirth = DateTime.Now
         };
-        var clientInvalidCommandSerialized = JsonConvert.SerializeObject(clientInvalidCommand);
+        var clientCommandSerialized = JsonConvert.SerializeObject(clientCommand);
 
         var response = await client.PostAsync("api/Client",
             new StringContent(clientCommandSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-
-        var responseInvalid = await client.PostAsync("api/Client",
-            new StringContent(clientInvalidCommandSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.BadRequest, responseInvalid.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -111,26 +133,48 @@ public class ClientsTest : IClassFixture<BookStoreWebApplicationFactory<Program>
         };
         var clientCommandSerialized = JsonConvert.SerializeObject(clientCommand);
 
-        var clientInvalidCommand = new UpdateClientCommand
+
+        var response = await client.PutAsync("api/Client/1",
+            new StringContent(clientCommandSerialized, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Put_ReturnsBadRequestIfInvalidBody()
+    {
+        var client = _factory.CreateClient();
+
+        var clientCommand = new UpdateClientCommand
         {
             FirstName =
                 "Johnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             LastName = "Doe",
             DateOfBirth = DateTime.Now
         };
-        var clientInvalidCommandSerialized = JsonConvert.SerializeObject(clientInvalidCommand);
+        var clientCommandSerialized = JsonConvert.SerializeObject(clientCommand);
 
         var response = await client.PutAsync("api/Client/1",
             new StringContent(clientCommandSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 
-        var responseInvalid = await client.PutAsync("api/Client/1",
-            new StringContent(clientInvalidCommandSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.BadRequest, responseInvalid.StatusCode);
+    [Fact]
+    public async Task Put_ReturnsNotFoundIfInvalidClient()
+    {
+        var client = _factory.CreateClient();
 
-        var responseInvalidSecond = await client.PutAsync("api/Client/11111111",
+        var clientCommand = new UpdateClientCommand
+        {
+            FirstName =
+                "John",
+            LastName = "Doe",
+            DateOfBirth = DateTime.Now
+        };
+        var clientCommandSerialized = JsonConvert.SerializeObject(clientCommand);
+
+        var response = await client.PutAsync("api/Client/11111111",
             new StringContent(clientCommandSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NotFound, responseInvalidSecond.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -140,9 +184,15 @@ public class ClientsTest : IClassFixture<BookStoreWebApplicationFactory<Program>
 
         var responseCorrect = await client.DeleteAsync("api/Client/1");
         Assert.Equal(HttpStatusCode.NoContent, responseCorrect.StatusCode);
+    }
 
-        var responseInvalid = await client.DeleteAsync("api/Client/11111");
-        Assert.Equal(HttpStatusCode.NotFound, responseInvalid.StatusCode);
+    [Fact]
+    public async Task Delete_ReturnsNotFoundIfInvalidClient()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.DeleteAsync("api/Client/11111");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -163,11 +213,23 @@ public class ClientsTest : IClassFixture<BookStoreWebApplicationFactory<Program>
             new StringContent(commandSerialized, Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
-        var dbClient = dbContext.Clients.FirstOrDefault(c => c.Id == 2);
+        var dbClient = await dbContext.Clients.FirstOrDefaultAsync(c => c.Id == 2);
         Assert.Equal("Adam", dbClient.FirstName);
+    }
 
-        var responseInvalid = await client.PatchAsync("api/Client/111111",
+    [Fact]
+    public async Task Patch_ReturnsNotFoundIfInvalidClient()
+    {
+        var client = _factory.CreateClient();
+
+        var command = new PatchClientCommand
+        {
+            FirstName = "Adam"
+        };
+        var commandSerialized = JsonConvert.SerializeObject(command);
+
+        var response = await client.PatchAsync("api/Client/111111",
             new StringContent(commandSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NotFound, responseInvalid.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

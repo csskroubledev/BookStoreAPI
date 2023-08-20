@@ -5,6 +5,7 @@ using BookStoreAPI.Functions.Commands.Book.Create;
 using BookStoreAPI.Functions.Commands.Book.Patch;
 using BookStoreAPI.Models;
 using BookStoreAPI.Tests.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Xunit;
@@ -30,15 +31,22 @@ public class BooksTests : IClassFixture<BookStoreWebApplicationFactory<Program>>
     [Fact]
     public async Task Get_ReturnsListOfAllBooksFromDatabase()
     {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BookStoreDatabaseContext>();
+
         var client = _factory.CreateClient();
 
         var response = await client.GetAsync("/api/BookStore");
         response.EnsureSuccessStatusCode();
         var contentString = await response.Content.ReadAsStringAsync();
-        var books = JsonConvert.DeserializeObject<IEnumerable<BookDto>>(contentString);
+        var books = JsonConvert.DeserializeObject<List<BookDto>>(contentString);
+
+        var currentBooks = await dbContext.Books.Include(b => b.RentalHistory).Include(b => b.Genre).ToListAsync();
+        var currentBooksDto = _mapper.Map<List<BookDto>>(currentBooks);
 
         Assert.NotNull(books);
         Assert.NotEmpty(books);
+        Assert.Equivalent(currentBooksDto, books);
     }
 
     [Fact]
@@ -49,7 +57,7 @@ public class BooksTests : IClassFixture<BookStoreWebApplicationFactory<Program>>
 
         var client = _factory.CreateClient();
 
-        var firstBook = dbContext.Books.First();
+        var firstBook = await dbContext.Books.FirstAsync();
 
         var response = await client.GetAsync($"api/BookStore/{firstBook.Id}");
         response.EnsureSuccessStatusCode();
@@ -60,6 +68,12 @@ public class BooksTests : IClassFixture<BookStoreWebApplicationFactory<Program>>
 
         Assert.NotNull(book);
         Assert.Equivalent(firstBookDto, book);
+    }
+
+    [Fact]
+    public async Task Get_ReturnsNotFoundIfBookDoesntExist()
+    {
+        var client = _factory.CreateClient();
 
         var responseInvalid = await client.GetAsync("api/BookStore/11111");
         Assert.Equal(HttpStatusCode.NotFound, responseInvalid.StatusCode);
@@ -70,31 +84,38 @@ public class BooksTests : IClassFixture<BookStoreWebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var correctBook = new CreateBookCommand
+        var book = new CreateBookCommand
         {
             Title = "Dummy Title",
             Author = "Dummy Author",
             ReleaseDate = DateTime.Now,
             GenreId = 1
         };
-        var correctBookSerialized = JsonConvert.SerializeObject(correctBook);
+        var bookSerialized = JsonConvert.SerializeObject(book);
 
-        var invalidBook = new CreateBookCommand
+
+        var response = await client.PostAsync("api/BookStore",
+            new StringContent(bookSerialized, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_ReturnsErrorIfNonExistentBookGenre()
+    {
+        var client = _factory.CreateClient();
+
+        var book = new CreateBookCommand
         {
             Title = "Dummy Title",
             Author = "Dummy Author",
             ReleaseDate = DateTime.Now,
             GenreId = 123
         };
-        var invalidBookSerialized = JsonConvert.SerializeObject(invalidBook);
+        var bookSerialized = JsonConvert.SerializeObject(book);
 
-        var responseCorrect = await client.PostAsync("api/BookStore",
-            new StringContent(correctBookSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NoContent, responseCorrect.StatusCode);
-
-        var responseInvalid = await client.PostAsync("api/BookStore",
-            new StringContent(invalidBookSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.InternalServerError, responseInvalid.StatusCode);
+        var response = await client.PostAsync("api/BookStore",
+            new StringContent(bookSerialized, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
     }
 
     [Fact]
@@ -102,35 +123,56 @@ public class BooksTests : IClassFixture<BookStoreWebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var correctBook = new BookDto
+        var book = new BookDto
         {
             Title = "Dammy Title",
             Author = "Dammy Author",
             ReleaseDate = DateTime.Now,
             GenreId = 1
         };
-        var correctBookSerialized = JsonConvert.SerializeObject(correctBook);
+        var bookSerialized = JsonConvert.SerializeObject(book);
 
-        var invalidBook = new BookDto
+        var response = await client.PutAsync("api/BookStore/1",
+            new StringContent(bookSerialized, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Put_ReturnsErrorIfInvalidBookGenre()
+    {
+        var client = _factory.CreateClient();
+
+        var book = new BookDto
         {
             Title = "Dammy Title",
             Author = "Dammy Author",
             ReleaseDate = DateTime.Now,
             GenreId = 123
         };
-        var invalidBookSerialized = JsonConvert.SerializeObject(invalidBook);
+        var bookSerialized = JsonConvert.SerializeObject(book);
 
-        var responseCorrect = await client.PutAsync("api/BookStore/1",
-            new StringContent(correctBookSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NoContent, responseCorrect.StatusCode);
+        var response = await client.PutAsync("api/BookStore/1",
+            new StringContent(bookSerialized, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
 
-        var responseInvalid = await client.PutAsync("api/BookStore/1",
-            new StringContent(invalidBookSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.InternalServerError, responseInvalid.StatusCode);
+    [Fact]
+    public async Task Put_ReturnsNotFoundIfInvalidBookId()
+    {
+        var client = _factory.CreateClient();
 
-        var responseInvalidSecond = await client.PutAsync("api/BookStore/11111",
-            new StringContent(invalidBookSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NotFound, responseInvalidSecond.StatusCode);
+        var book = new BookDto
+        {
+            Title = "Dammy Title",
+            Author = "Dammy Author",
+            ReleaseDate = DateTime.Now,
+            GenreId = 123
+        };
+        var bookSerialized = JsonConvert.SerializeObject(book);
+
+        var response = await client.PutAsync("api/BookStore/11111",
+            new StringContent(bookSerialized, Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -138,11 +180,17 @@ public class BooksTests : IClassFixture<BookStoreWebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var responseCorrect = await client.DeleteAsync("api/BookStore/1");
-        Assert.Equal(HttpStatusCode.NoContent, responseCorrect.StatusCode);
+        var response = await client.DeleteAsync("api/BookStore/1");
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
 
-        var responseInvalid = await client.DeleteAsync("api/BookStore/11111");
-        Assert.Equal(HttpStatusCode.NotFound, responseInvalid.StatusCode);
+    [Fact]
+    public async Task Delete_ReturnsNotFoundIfInvalidBookId()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.DeleteAsync("api/BookStore/11111");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -163,11 +211,23 @@ public class BooksTests : IClassFixture<BookStoreWebApplicationFactory<Program>>
             new StringContent(commandSerialized, Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
-        var book = dbContext.Books.FirstOrDefault(b => b.Id == 2);
+        var book = await dbContext.Books.FirstOrDefaultAsync(b => b.Id == 2);
         Assert.Equal("Diummy Book", book.Title);
+    }
 
-        var responseInvalid = await client.PatchAsync("api/BookStore/111111",
+    [Fact]
+    public async Task Patch_ReturnsNotFoundIfInvalidBookId()
+    {
+        var client = _factory.CreateClient();
+
+        var command = new PatchBookCommand
+        {
+            Title = "Diummy Book"
+        };
+        var commandSerialized = JsonConvert.SerializeObject(command);
+
+        var response = await client.PatchAsync("api/BookStore/111111",
             new StringContent(commandSerialized, Encoding.UTF8, "application/json"));
-        Assert.Equal(HttpStatusCode.NotFound, responseInvalid.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }
